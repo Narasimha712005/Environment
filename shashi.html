@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Environmental Reporting App</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="style.css">
+  <style>
+    :root {
+      --primary-color: #2f855a;
+      --background-light: #f9f9f9;
+      --background-dark: #121212;
+      --text-dark: #1a202c;
+      --text-light: #ffffff;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: var(--background-light);
+      color: var(--text-dark);
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    header, footer {
+      background-color: var(--primary-color);
+      color: white;
+      padding: 1.2rem;
+      text-align: center;
+    }
+
+    nav {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+    }
+
+    .dropdown button {
+      padding: 8px 12px;
+      background-color: var(--primary-color);
+      border: none;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .dropdown-content {
+      background-color: white;
+      display: none;
+      position: absolute;
+      right: 0;
+      margin-top: 10px;
+      min-width: 180px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .dropdown-content a {
+      padding: 12px 16px;
+      display: block;
+      text-decoration: none;
+      color: #333;
+      transition: background 0.2s;
+    }
+
+    .dropdown-content a:hover {
+      background-color: #f0f0f0;
+    }
+
+    .dropdown:hover .dropdown-content {
+      display: block;
+    }
+
+    main {
+      padding: 2rem 1rem;
+      max-width: 800px;
+      margin: auto;
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: bold;
+    }
+
+    input[type="text"],
+    input[type="password"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 10px;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
+
+    button {
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      background-color: #aaa;
+      cursor: not-allowed;
+    }
+
+    #map {
+      width: 100%;
+      height: 400px;
+      margin-top: 1.5rem;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+
+    .section {
+      display: none;
+    }
+
+    .active {
+      display: block;
+    }
+
+    #previewImage {
+      max-width: 200px;
+      margin-top: 10px;
+      display: block;
+      border-radius: 8px;
+      box-shadow: 0 0 8px rgba(0,0,0,0.1);
+    }
+
+    .dark-mode {
+      background-color: var(--background-dark);
+      color: var(--text-light);
+    }
+
+    .dark-mode header,
+    .dark-mode footer {
+      background-color: #1a1a1a;
+    }
+
+    .dark-mode input,
+    .dark-mode textarea,
+    .dark-mode select {
+      background-color: #2c2c2c;
+      color: white;
+      border: 1px solid #444;
+    }
+
+    .dark-mode .dropdown-content {
+      background-color: #2e2e2e;
+    }
+
+    .dark-mode .dropdown-content a {
+      color: white;
+    }
+
+    .dark-mode .dropdown-content a:hover {
+      background-color: #444;
+    }
+
+    #submitMessage {
+      margin-top: 1rem;
+      color: var(--primary-color);
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Environmental Issue Reporter</h1>
+  </header>
+
+  <nav>
+    <div class="dropdown">
+      <button>⚙️</button>
+      <div class="dropdown-content">
+        <a href="#" onclick="showSection('login')">Logout</a>
+        <a href="#" onclick="alert('No history available')">History</a>
+        <a href="#" onclick="showSection('feedback')">Help & Feedback</a>
+        <a href="#" onclick="showSection('changePassword')">Change Password</a>
+        <a href="#" onclick="toggleDarkMode()">Toggle Dark Mode</a>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <section id="login" class="section active">
+      <h2>Login</h2>
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="username">Username (Gmail only):</label>
+          <input type="text" id="username" required>
+        </div>
+        <div class="form-group">
+          <label for="password">Password:</label>
+          <input type="password" id="password" required>
+        </div>
+        <button type="submit">Login</button>
+      </form>
+    </section>
+
+    <section id="report" class="section">
+      <form id="reportForm">
+        <div class="form-group">
+          <label for="issueType">Issue Type:</label>
+          <select id="issueType" required>
+            <option value="">--Select--</option>
+            <option value="Air Pollution">Air Pollution</option>
+            <option value="Water Pollution">Water Pollution</option>
+            <option value="Illegal Dumping">Illegal Dumping</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Location:</label><br>
+          <input type="radio" name="locationChoice" value="current" checked onchange="setLocationMode()"> Use Current Location<br>
+          <input type="radio" name="locationChoice" value="manual" onchange="setLocationMode()"> Pick on Map<br>
+          <p id="locationStatus">Waiting for location...</p>
+        </div>
+
+        <div class="form-group">
+          <label for="image">Upload Image:</label>
+          <input type="file" id="image" accept="image/*">
+          <img id="previewImage" alt="Preview" />
+        </div>
+
+        <button type="submit" id="submitBtn" disabled>Submit Issue</button>
+        <p id="submitMessage"></p>
+      </form>
+
+      <div id="map"></div>
+    </section>
+
+    <section id="feedback" class="section">
+      <h2>Feedback</h2>
+      <form id="feedbackForm">
+        <textarea rows="4" cols="50" placeholder="Enter your feedback here..."></textarea><br>
+        <button type="submit">Submit</button>
+      </form>
+    </section>
+
+    <section id="changePassword" class="section">
+      <h2>Change Password</h2>
+      <form id="changePasswordForm">
+        <div class="form-group">
+          <label for="newPassword">New Password:</label>
+          <input type="password" id="newPassword" required>
+        </div>
+        <div class="form-group">
+          <label for="confirmPassword">Confirm New Password:</label>
+          <input type="password" id="confirmPassword" required>
+        </div>
+        <button type="submit">Change Password</button>
+      </form>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2025 Environmental App</p>
+  </footer>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    let map, marker, currentLat = null, currentLng = null, manualMode = false;
+
+    if (localStorage.getItem("darkMode") === "true") {
+      document.body.classList.add("dark-mode");
+    }
+
+    function toggleDarkMode() {
+      const isDark = document.body.classList.toggle("dark-mode");
+      localStorage.setItem("darkMode", isDark);
+    }
+
+    function setLocationMode() {
+      manualMode = document.querySelector("input[name='locationChoice']:checked").value === "manual";
+      updateLocationStatus();
+      if (!manualMode) {
+        getCurrentLocation();
+      }
+    }
+
+    function getCurrentLocation() {
+      navigator.geolocation.getCurrentPosition(pos => {
+        currentLat = pos.coords.latitude;
+        currentLng = pos.coords.longitude;
+        updateLocationStatus();
+        if (!manualMode) {
+          addMarker(currentLat, currentLng);
+          map.setView([currentLat, currentLng], 15);
+          document.getElementById("submitBtn").disabled = false;
+        }
+      }, err => {
+        document.getElementById("locationStatus").textContent = "Location error: " + err.message;
+      });
+    }
+
+    function updateLocationStatus() {
+      const status = document.getElementById("locationStatus");
+      status.textContent = currentLat && currentLng
+        ? `Lat: ${currentLat.toFixed(4)}, Lng: ${currentLng.toFixed(4)}`
+        : manualMode ? "Click on the map to choose location." : "Waiting for location...";
+    }
+
+    function addMarker(lat, lng, popupText = "", imageSrc = "") {
+      if (marker) map.removeLayer(marker);
+      marker = L.marker([lat, lng]).addTo(map);
+      if (popupText) {
+        marker.bindPopup(`<b>${popupText}</b><br><img src="${imageSrc}" alt="Issue Image" width="100" />`).openPopup();
+      }
+    }
+
+    function showIssueOnMap(issueType, imageSrc) {
+      addMarker(currentLat, currentLng, `Reported Issue: ${issueType}`, imageSrc);
+      map.setView([currentLat, currentLng], 15);
+    }
+
+    window.onload = function () {
+      map = L.map("map").setView([20, 0], 2);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+
+      map.on("click", function (e) {
+        if (manualMode) {
+          currentLat = e.latlng.lat;
+          currentLng = e.latlng.lng;
+          updateLocationStatus();
+          addMarker(currentLat, currentLng);
+          document.getElementById("submitBtn").disabled = false;
+        }
+      });
+
+      setLocationMode();
+    };
+
+    function showSection(id) {
+      document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+      document.getElementById(id).classList.add("active");
+    }
+
+    document.getElementById("loginForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value.trim();
+
+      const isValidGmail = /^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(username);
+      if (isValidGmail && password === "Reset1998") {
+        alert("✅ Login successful!");
+        showSection("report");
+      } else {
+        alert("❌ Invalid login credentials. Use a valid Gmail and password 'Reset1998'.");
+      }
+    });
+
+    document.getElementById("reportForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      const issueType = document.getElementById("issueType").value;
+      const image = document.getElementById("previewImage").src;
+      if (!issueType || !currentLat || !currentLng || !image) {
+        alert("❌ Please complete all required fields.");
+        return;
+      }
+      alert("✅ Issue Submitted!");
+      document.getElementById("submitMessage").textContent = "🎉 Thank you for submitting your report!";
+      showIssueOnMap(issueType, image);
+    });
+
+    document.getElementById("image").addEventListener("change", function () {
+      const file = this.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = e => {
+          document.getElementById("previewImage").src = e.target.result;
+          document.getElementById("submitBtn").disabled = false;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    document.getElementById("changePasswordForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      const newPassword = document.getElementById("newPassword").value.trim();
+      const confirmPassword = document.getElementById("confirmPassword").value.trim();
+      if (newPassword === confirmPassword) {
+        alert("✅ Password changed successfully.");
+      } else {
+        alert("❌ Passwords do not match.");
+      }
+    });
+  </script>
+</body>
+</html>
